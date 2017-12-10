@@ -1,0 +1,87 @@
+﻿<!doctype html>
+<html>
+  <head>
+    <title>Socket.IO chat</title>
+	<script src="/public/jquery.js"></script>
+    <style>
+
+    </style>
+  </head>
+  <body>
+	
+	<div id="content">
+	
+	<form action="" onsubmit="setPlayerName(); return false">
+		Write your name: <input type="text" id="playerName" required/>
+		<input type="submit" value="Start game" id="startGame">
+	</form>
+	
+	</div>
+	
+	<script src="/socket.io/socket.io.js"></script>
+	<script>
+	
+		$('#playerName').val('Player_'+(new Date()).getTime());
+		$('#startGame').focus();
+	
+	  var socket = io.connect();
+	  socket.on('startGame', function (data) {
+	   let room = data.room;
+	   let htmlCode = 'Phase: <span id="etapa">'+room.etapa+'</span>';
+	   htmlCode+='<div id="introdu_nr">';
+	   htmlCode+='<form action="" onsubmit="transmiteNrForm();return false;">';
+		htmlCode+='<input type="text" id="nrTransmis" title="a number of four different digits (the first must be 1)" required>';
+		htmlCode+='<button>send</button></form></div>';
+	   $('#content').html(htmlCode);
+	  });
+	  
+	  socket.on('startGuess', function(data) {
+		let htmlCode="";
+		if(data.merge==0){
+			htmlCode+='<div id="ghiceste_nr" style="display:none">';
+		}else{
+			htmlCode+='<div id="ghiceste_nr" >';
+		}
+		htmlCode+='<form action="" onsubmit="ghicesteNrForm();return false;">'; /* pattern=\"^(?!.*(\d).*\1)1\d{3}$\"*/
+		htmlCode+='<input type="text" id="nrGhicit" title="a number of four different digits (the first must be 1)" required>';
+		htmlCode+='<button>send</button></form></div>';		
+		htmlCode+='<div id="game"><b>Ce ai ghicit tu:</b><br></div>';
+		htmlCode+='<div id="game2"><b>Pasii adversarului:</b><br></div>';
+		$('#content').html(htmlCode);
+	  });
+	  
+	  socket.on('yourTurn', function(data) {
+		if( data.nr=='winner' ){
+			$('#game2').append('ADVERSARUL A GHICIT NUMARUL!'); 
+		}else{
+			$('#ghiceste_nr').show();
+			$('#game2').append('Incercarea adversarului: '+data.nr+', Raspuns: '+data.raspuns + '<br>');
+		}
+      });
+	  
+	  function ghicesteNrForm(){
+			socket.emit('guessNr', { numberGuess : parseInt($('#nrGhicit').val()) }, function(data){
+																						if( data=='winner' ){
+																							$('#game').append('AI CASTIGAT! Felicitari!');
+																						}else{
+																							$('#game').append('Ai trimis: '+$('#nrGhicit').val()+', Raspuns: '+data+'<br>');
+																						}
+																						$('#ghiceste_nr').hide();
+																						$('#nrGhicit').val('');					
+																						} );
+
+	  }
+	  
+	  function transmiteNrForm(){
+			socket.emit('sendMyNumber', { myNum : parseInt($('#nrTransmis').val()) } );
+			$('#introdu_nr').html('Ai introdus numarul cu succes. Se asteapta adversarul!');
+	  }
+	  function setPlayerName(){
+		  // verificare
+		  socket.emit('startGame', { name: $("#playerName").val() });
+		  $('#content').html('You are waiting for the opponent!');
+	  };
+	</script>
+	
+  </body>
+</html>
